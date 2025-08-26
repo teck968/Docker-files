@@ -5,19 +5,23 @@ services:
     ports:
       - "6333:6333"
     volumes:
-      - mem0_storage:/mem0/storage
+      - /mnt/JN50Tb1/data/openmemory/qdrant/storage:/qdrant/storage
+      - /mnt/JN50Tb1/data/openmemory/qdrant/snapshots:/qdrant/snapshots
   openmemory-mcp:
     image: mem0/openmemory-mcp:latest
     restart: unless-stopped
     environment:
-      - OPENAI_API_KEY=sk-proj...
+      - OPENAI_API_KEY=API_KEY
       - USER=Teck
       - QDRANT_HOST=mem0_store
       - QDRANT_PORT=6333
+      - DATABASE_URL=sqlite:///data/openmemory.db
     depends_on:
       - mem0_store
     ports:
       - "8765:8765"
+    volumes:
+      - /mnt/JN50Tb1/data/openmemory/database:/usr/src/openmemory/data
   openmemory-ui:
     image: mem0/openmemory-ui:latest
     restart: unless-stopped
@@ -28,5 +32,3 @@ services:
       NEXT_PUBLIC_USER_ID: "Teck"
       PORT: "3000"
       HOSTNAME: "0.0.0.0"
-volumes:
-  mem0_storage:
