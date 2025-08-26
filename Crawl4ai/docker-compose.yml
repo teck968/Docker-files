@@ -1,6 +1,5 @@
 services:
   crawl4ai:
-    container_name: crawl4ai
     healthcheck:
       interval: 30s
       retries: 3
