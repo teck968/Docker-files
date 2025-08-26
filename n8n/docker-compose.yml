@@ -1,0 +1,78 @@
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    restart: unless-stopped
+    network_mode: "host"
+    env_file:
+      - /srv/n8n/envs/.n8n.env
+    environment:
+      # n8n listening settings
+      N8N_HOST:      "127.0.0.1"
+      N8N_PORT:      "5678"
+      N8N_PROTOCOL:  "http"
+      # External URL for webhooks and links
+      WEBHOOK_URL:   "https://n8n.mcfarland.systems/"
+      # Timezone
+      TZ:            "America/New_York"
+      # Allow use of community nodes
+      N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE: true
+    volumes:
+      - /srv/n8n/data:/home/node/.n8n
+      - /srv/n8n/io:/io
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider --quiet http://localhost:5678/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  caddy:
+    build:
+      context: ./caddy
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    network_mode: "host"
+    depends_on:
+      - n8n
+    env_file:
+      - /srv/n8n/envs/.caddy.env
+    volumes:
+      - /srv/n8n/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /srv/n8n/caddy:/data
+      - /srv/n8n/caddy/certs:/certs:ro
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 80 || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  mcp-gmail:
+    build:
+      context: ./mcp-proxy-node
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:18082:8097"   # host 18082 → proxy's HTTP port 8097
+    environment:
+      - GMAIL_CREDENTIALS_PATH=/run/secrets/gmail_credentials
+      - GMAIL_OAUTH_PATH=/run/secrets/gmail_oauth_keys
+      - GMAIL_DOWNLOAD_DIR=/downloads           # optional; where attachments save
+    volumes:
+      - /srv/n8n/io:/io
+    secrets:
+      - gmail_credentials
+      - gmail_oauth_keys
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import socket,sys; s=socket.create_connection((\"127.0.0.1\",8097),2); s.close()'"]
+      interval: 20s
+      timeout: 3s
+      retries: 5
+    # Proxy exposes HTTP/SSE and spawns the stdio Gmail server behind it
+    command: "--pass-environment --host 0.0.0.0 --port 8097 npx @gongrzhe/server-gmail-autoauth-mcp"
+    restart: unless-stopped
+
+secrets:
+  gmail_credentials:
+    file: /srv/n8n/envs/secrets/gmail/credentials.json
+  gmail_oauth_keys:
+    file: /srv/n8n/envs/secrets/gmail/gcp-oauth.keys.json
