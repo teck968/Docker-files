@@ -1,0 +1,16 @@
+services:
+  crawl4ai:
+    container_name: crawl4ai
+    healthcheck:
+      interval: 30s
+      retries: 3
+      start_period: 40s
+      test:
+        - CMD-SHELL
+        - curl -f http://localhost:11235/health || exit 1
+      timeout: 10s
+    image: unclecode/crawl4ai:0.7.4
+    ports:
+      - '11235:11235'
+    restart: unless-stopped
+    shm_size: 1g

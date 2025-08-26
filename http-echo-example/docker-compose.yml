@@ -1,0 +1,9 @@
+services:
+  hello:
+    image: hashicorp/http-echo:0.2.3
+    command:
+      - "-text=Hello from Compose on TrueNAS!"
+      - "-listen=:5678"
+    ports:
+      - "8080:5678"
+    restart: unless-stopped
